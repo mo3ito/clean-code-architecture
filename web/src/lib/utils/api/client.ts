@@ -1,21 +1,13 @@
 import axios from "axios";
-import {
-  setupRequestInterceptor,
-  setupResponseInterceptor,
-  setupResponseErrorInterceptor,
-} from "./interceptors";
+
+import { API_CONFIG } from "./config";
 
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
-  timeout: 15000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: API_CONFIG.baseURL,
+
+  timeout: API_CONFIG.timeout,
+
+  headers: API_CONFIG.headers,
+
   withCredentials: true,
 });
-
-api.interceptors.request.use(setupRequestInterceptor);
-api.interceptors.response.use(
-  setupResponseInterceptor,
-  setupResponseErrorInterceptor,
-);

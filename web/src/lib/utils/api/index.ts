@@ -1,20 +1,41 @@
-import type { AxiosRequestConfig } from "axios";
 import { api } from "./client";
 
-export const http = {
-  get: <T>(url: string, config?: AxiosRequestConfig) => api.get<T>(url, config),
+import { setupInterceptors } from "./interceptors";
 
-  post: <T, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig) =>
-    api.post<T>(url, data, config),
+import { http } from "./http";
 
-  put: <T, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig) =>
-    api.put<T>(url, data, config),
+let isInitialized = false;
 
-  patch: <T, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig) =>
-    api.patch<T>(url, data, config),
+function initializeApi() {
+  if (isInitialized) {
+    return;
+  }
 
-  delete: <T>(url: string, config?: AxiosRequestConfig) =>
-    api.delete<T>(url, config),
-};
+  setupInterceptors();
 
-export { api };
+  isInitialized = true;
+}
+
+initializeApi();
+
+export { api, http };
+
+export {
+  getAccessToken,
+  setAccessToken,
+  clearAccessToken,
+} from "./auth";
+
+export {
+  normalizeApiError,
+} from "./errors";
+
+export type {
+  ApiResponse,
+  ApiErrorResponse,
+} from "./types";
+
+export type {
+  ApiError,
+  ApiErrorType,
+} from "./errors";

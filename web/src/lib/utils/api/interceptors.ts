@@ -1,25 +1,32 @@
+import type {
+  AxiosError,
+  InternalAxiosRequestConfig,
+} from "axios";
 
-import type { InternalAxiosRequestConfig } from "axios";
-import { getAccessToken } from "./auth";
-import type { AxiosResponse } from "axios";
+import { api } from "./client";
 
-export interface CustomAxiosRequestConfig
-  extends InternalAxiosRequestConfig {
-  requiresAuth?: boolean;
-}
+import {
+  getAccessToken,
+  setAccessToken,
+  clearAccessToken,
+  refreshAccessToken,
+} from "./auth";
 
-export function setupRequestInterceptor(
-  config: CustomAxiosRequestConfig
+function handleRequest(
+  config: InternalAxiosRequestConfig
 ) {
-  // اگر درخواست صراحتاً Authentication نخواهد
   if (config.requiresAuth === false) {
     return config;
   }
 
-  // دریافت Access Token
   const token = getAccessToken();
 
-  // اضافه کردن Token به Header
+  if (config.requiresAuth === true && !token) {
+    return Promise.reject(
+      new Error("Authentication required")
+    );
+  }
+
   if (token) {
     config.headers.set(
       "Authorization",
@@ -30,14 +37,47 @@ export function setupRequestInterceptor(
   return config;
 }
 
-export function setupResponseInterceptor(
-  response: AxiosResponse
+async function handleResponseError(
+  error: AxiosError
 ) {
-  return response;
+  const originalRequest = error.config;
+
+  if (
+    error.response?.status !== 401 ||
+    !originalRequest ||
+    originalRequest.requiresAuth === false ||
+    originalRequest.skipAuthRefresh ||
+    originalRequest._retry
+  ) {
+    return Promise.reject(error);
+  }
+
+  originalRequest._retry = true;
+
+  try {
+    const newToken = await refreshAccessToken();
+
+    originalRequest.headers.set(
+      "Authorization",
+      `Bearer ${newToken}`
+    );
+
+    return api(originalRequest);
+  } catch (refreshError) {
+    clearAccessToken();
+
+    return Promise.reject(refreshError);
+  }
 }
 
-export function setupResponseErrorInterceptor(
-  error: unknown
-) {
-  return Promise.reject(error);
+export function setupInterceptors() {
+  api.interceptors.request.use(
+    handleRequest,
+    (error) => Promise.reject(error)
+  );
+
+  api.interceptors.response.use(
+    (response) => response,
+    handleResponseError
+  );
 }
